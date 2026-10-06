@@ -1,14 +1,16 @@
+// components/Navbar.tsx
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Timer, BarChart3, Gift } from 'lucide-react';
+import { Timer, BarChart3, Gift, CheckSquare } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
 
   const links = [
     { href: '/focus', label: 'Enfoque', icon: Timer },
+    { href: '/dashboard/tasks', label: 'Tareas', icon: CheckSquare },
     { href: '/dashboard', label: 'Récords', icon: BarChart3 },
     { href: '/rewards', label: 'Tienda', icon: Gift },
   ];
