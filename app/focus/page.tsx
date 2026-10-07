@@ -20,7 +20,7 @@ export default function FocusPage() {
   const { formattedTime, progressPercentage } = usePomodoroTimer();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-between p-6">
+    <div className="text-slate-100 flex flex-col items-center justify-between p-6">
       {/* Top Bar: Puntos y Modo Actual */}
       <header className="w-full max-w-xl flex items-center justify-between bg-slate-900/80 backdrop-blur border border-slate-800 p-4 rounded-2xl">
         <div className="flex items-center space-x-2">

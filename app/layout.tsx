@@ -42,11 +42,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${inter.variable} ${jetbrainsMono.variable} dark`}>
-      <body className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white pb-20 md:pb-0 md:pt-16">
+      <body className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white">
         <ServiceWorkerRegister />
-        <div className="relative flex min-h-screen flex-col justify-between">
+        <div className="relative flex min-h-screen flex-col bg-slate-950">
           <Navbar />
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 bg-slate-950 pb-24 md:pb-12 md:pt-16">
+            {children}
+          </main>
         </div>
       </body>
     </html>

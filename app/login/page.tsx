@@ -1,4 +1,4 @@
-// app/login/page.tsx
+
 'use client';
 
 import { useState } from 'react';
@@ -55,7 +55,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+    <div className="flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
         
         {/* Cabecera / Marca */}
