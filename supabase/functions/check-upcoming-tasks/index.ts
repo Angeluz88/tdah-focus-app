@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient } from '@supabase/supabase-js';
 
 const MOTIVATIONAL_PHRASES = [
   "Solo dale 2 minutos. Si luego quieres parar, lo dejamos.",
@@ -8,7 +8,7 @@ const MOTIVATIONAL_PHRASES = [
   "Un tropiezo en tu plan no arruina tu día. Reagendamos sin culpa."
 ];
 
-Deno.serve(async (req) => {
+Deno.serve(async (_req) => {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
