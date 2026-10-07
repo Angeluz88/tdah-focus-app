@@ -9,7 +9,8 @@ export async function GET(request: Request) {
   const next = searchParams.get('next') ?? '/focus';
 
   if (code) {
-    const cookieStore = cookies();
+    const cookieStore = await cookies(); // <--- Agregado 'await' aquí
+    
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
