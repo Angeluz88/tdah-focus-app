@@ -4,7 +4,17 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Plus, CheckSquare, Clock, Trophy, Trash2, Play, Calendar, Loader2 } from 'lucide-react';
+import {
+  Plus,
+  CheckSquare,
+  Clock,
+  Trophy,
+  Trash2,
+  Play,
+  Calendar,
+  Repeat,
+  Loader2,
+} from 'lucide-react';
 
 interface Task {
   id: string;
@@ -12,6 +22,7 @@ interface Task {
   estimated_minutes: number;
   points: number;
   due_date?: string | null;
+  is_periodic?: boolean;
   status: 'pending' | 'completed';
   created_at: string;
 }
@@ -22,16 +33,20 @@ export default function TasksPage() {
   const [estimatedMinutes, setEstimatedMinutes] = useState(25);
   const [points, setPoints] = useState(50);
   const [dueDate, setDueDate] = useState('');
+  const [isPeriodic, setIsPeriodic] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
   const router = useRouter();
   const supabase = createClient();
 
+  // 1. Cargar las tareas pendientes del usuario
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data, error } = await supabase
@@ -52,6 +67,7 @@ export default function TasksPage() {
     fetchTasks();
   }, [supabase]);
 
+  // 2. Crear una nueva tarea con soporte para periódicas y fecha límite
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
@@ -59,7 +75,10 @@ export default function TasksPage() {
     setLoading(true);
 
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
       if (userError || !user) throw new Error('Usuario no autenticado');
 
       const payload = {
@@ -67,6 +86,7 @@ export default function TasksPage() {
         estimated_minutes: Number(estimatedMinutes),
         points: Number(points),
         due_date: dueDate ? new Date(dueDate).toISOString() : null,
+        is_periodic: isPeriodic,
         user_id: user.id,
         status: 'pending',
       };
@@ -83,10 +103,12 @@ export default function TasksPage() {
         setTasks((prev) => [newTask as Task, ...prev]);
       }
 
+      // Limpiar formulario
       setTitle('');
       setEstimatedMinutes(25);
       setPoints(50);
       setDueDate('');
+      setIsPeriodic(false);
 
       router.refresh();
     } catch (err: any) {
@@ -97,6 +119,7 @@ export default function TasksPage() {
     }
   };
 
+  // 3. Eliminar tarea
   const handleDeleteTask = async (id: string) => {
     try {
       const { error } = await supabase.from('tasks').delete().eq('id', id);
@@ -111,6 +134,7 @@ export default function TasksPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-8">
+      {/* Encabezado */}
       <div>
         <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
           <CheckSquare className="w-6 h-6 text-indigo-400" />
@@ -121,6 +145,7 @@ export default function TasksPage() {
         </p>
       </div>
 
+      {/* Formulario de Creación */}
       <form
         onSubmit={handleCreateTask}
         className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4 shadow-xl"
@@ -134,7 +159,7 @@ export default function TasksPage() {
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ej: Escribir reporte o responder correos"
+            placeholder="Ej: Escribir reporte, lavar la ropa o revisar correos"
             className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-indigo-500 transition"
           />
         </div>
@@ -184,6 +209,24 @@ export default function TasksPage() {
           </div>
         </div>
 
+        {/* Checkbox para Tarea Periódica */}
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="checkbox"
+            id="isPeriodic"
+            checked={isPeriodic}
+            onChange={(e) => setIsPeriodic(e.target.checked)}
+            className="w-4 h-4 rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+          />
+          <label
+            htmlFor="isPeriodic"
+            className="text-xs font-medium text-slate-300 flex items-center gap-1.5 cursor-pointer select-none"
+          >
+            <Repeat className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Tarea Periódica (Permite acumular puntos sin eliminar la tarea al completar)</span>
+          </label>
+        </div>
+
         <button
           type="submit"
           disabled={loading || !title.trim()}
@@ -203,6 +246,7 @@ export default function TasksPage() {
         </button>
       </form>
 
+      {/* Lista de Tareas */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-slate-200">Tus Pendientes</h2>
 
@@ -214,6 +258,9 @@ export default function TasksPage() {
         ) : tasks.length === 0 ? (
           <div className="text-center py-12 bg-slate-900/50 border border-slate-800/80 rounded-2xl p-6">
             <p className="text-slate-400 text-sm">No tienes tareas pendientes.</p>
+            <p className="text-slate-500 text-xs mt-1">
+              Crea una arriba para comenzar una sesión de enfoque.
+            </p>
           </div>
         ) : (
           <div className="grid gap-3">
@@ -222,10 +269,18 @@ export default function TasksPage() {
                 key={task.id}
                 className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition hover:border-slate-700"
               >
-                <div className="space-y-1">
-                  <h3 className="font-medium text-slate-100 text-sm sm:text-base">
-                    {task.title}
-                  </h3>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-slate-100 text-sm sm:text-base">
+                      {task.title}
+                    </h3>
+                    {task.is_periodic && (
+                      <span className="flex items-center gap-1 text-[10px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+                        <Repeat className="w-3 h-3" /> Periódica
+                      </span>
+                    )}
+                  </div>
+
                   <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5 text-indigo-400" />
