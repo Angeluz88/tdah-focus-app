@@ -4,7 +4,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Gift, Trophy, Plus, ShoppingBag, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import {
+  Gift,
+  Trophy,
+  Plus,
+  ShoppingBag,
+  Loader2,
+  Trash2,
+  Sparkles,
+  Repeat,
+} from 'lucide-react';
 
 interface Reward {
   id: string;
@@ -17,6 +26,7 @@ export default function RewardsPage() {
   const [points, setPoints] = useState<number>(0);
   const [title, setTitle] = useState('');
   const [cost, setCost] = useState(100);
+  const [singleUse, setSingleUse] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
@@ -30,10 +40,11 @@ export default function RewardsPage() {
 
   const fetchData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Obtener puntos del perfil
       const { data: profile } = await supabase
         .from('profiles')
         .select('points')
@@ -42,7 +53,6 @@ export default function RewardsPage() {
 
       if (profile) setPoints(profile.points || 0);
 
-      // Obtener recompensas disponibles
       const { data: rewardList, error } = await supabase
         .from('rewards')
         .select('*')
@@ -63,7 +73,9 @@ export default function RewardsPage() {
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuario no autenticado');
 
       const { data: newReward, error } = await supabase
@@ -77,6 +89,7 @@ export default function RewardsPage() {
       if (newReward) setRewards((prev) => [...prev, newReward as Reward]);
       setTitle('');
       setCost(100);
+      setSingleUse(false);
     } catch (err: any) {
       alert('Error al guardar recompensa: ' + err.message);
     } finally {
@@ -89,7 +102,9 @@ export default function RewardsPage() {
 
     setRedeemingId(reward.id);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuario no autenticado');
 
       const { error } = await supabase.rpc('redeem_reward', {
@@ -97,11 +112,17 @@ export default function RewardsPage() {
         p_user_id: user.id,
         p_reward_title: reward.title,
         p_cost: reward.cost,
+        p_auto_delete: singleUse,
       });
 
       if (error) throw error;
 
       setPoints((prev) => prev - reward.cost);
+
+      if (singleUse) {
+        setRewards((prev) => prev.filter((r) => r.id !== reward.id));
+      }
+
       alert(`¡Felicidades! Canjeaste "${reward.title}".`);
       router.refresh();
     } catch (err: any) {
@@ -111,9 +132,21 @@ export default function RewardsPage() {
     }
   };
 
+  const handleDeleteReward = async (id: string) => {
+    try {
+      const { error } = await supabase.from('rewards').delete().eq('id', id);
+      if (error) throw error;
+
+      setRewards((prev) => prev.filter((r) => r.id !== id));
+      router.refresh();
+    } catch (err: any) {
+      alert('Error al eliminar recompensa: ' + err.message);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-8">
-      {/* Encabezado con Saldo */}
+      {/* Encabezado */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
         <div>
           <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
@@ -131,8 +164,11 @@ export default function RewardsPage() {
         </div>
       </div>
 
-      {/* Formulario de Nueva Recompensa */}
-      <form onSubmit={handleCreateReward} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4">
+      {/* Formulario */}
+      <form
+        onSubmit={handleCreateReward}
+        className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4"
+      >
         <h2 className="text-sm font-semibold text-slate-200">Crear Nueva Recompensa</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="sm:col-span-2">
@@ -141,7 +177,7 @@ export default function RewardsPage() {
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ej: 30 min de videojuego, Ver un capítulo de serie"
+              placeholder="Ej: 30 min de videojuegos, Comprar un café especial"
               className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-amber-500 transition"
             />
           </div>
@@ -158,6 +194,23 @@ export default function RewardsPage() {
           </div>
         </div>
 
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="checkbox"
+            id="singleUse"
+            checked={singleUse}
+            onChange={(e) => setSingleUse(e.target.checked)}
+            className="w-4 h-4 rounded bg-slate-950 border-slate-800 text-amber-500 focus:ring-amber-500 cursor-pointer"
+          />
+          <label
+            htmlFor="singleUse"
+            className="text-xs font-medium text-slate-300 flex items-center gap-1.5 cursor-pointer select-none"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>Eliminar automáticamente de la tienda tras el primer canje</span>
+          </label>
+        </div>
+
         <button
           type="submit"
           disabled={loading || !title.trim()}
@@ -168,7 +221,7 @@ export default function RewardsPage() {
         </button>
       </form>
 
-      {/* Lista de Recompensas */}
+      {/* Lista */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-slate-200">Recompensas Disponibles</h2>
 
@@ -178,7 +231,7 @@ export default function RewardsPage() {
           </div>
         ) : rewards.length === 0 ? (
           <div className="text-center py-12 bg-slate-900/50 border border-slate-800 rounded-2xl p-6 text-slate-400 text-sm">
-            No has agregado recompensas aún.
+            No tienes recompensas activas.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -187,7 +240,7 @@ export default function RewardsPage() {
               return (
                 <div
                   key={reward.id}
-                  className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between gap-4"
+                  className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between gap-4 transition hover:border-slate-700"
                 >
                   <div>
                     <h3 className="font-medium text-slate-100 text-sm">{reward.title}</h3>
@@ -196,22 +249,32 @@ export default function RewardsPage() {
                     </span>
                   </div>
 
-                  <button
-                    onClick={() => handleRedeem(reward)}
-                    disabled={!canAfford || redeemingId === reward.id}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
-                      canAfford
-                        ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer shadow-lg shadow-amber-500/20'
-                        : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                    }`}
-                  >
-                    {redeemingId === reward.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <ShoppingBag className="w-4 h-4" />
-                    )}
-                    <span>{canAfford ? 'Canjear' : 'Faltan pts'}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleRedeem(reward)}
+                      disabled={!canAfford || redeemingId === reward.id}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                        canAfford
+                          ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer shadow-lg shadow-amber-500/20'
+                          : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {redeemingId === reward.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <ShoppingBag className="w-4 h-4" />
+                      )}
+                      <span>{canAfford ? 'Canjear' : 'Faltan pts'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteReward(reward.id)}
+                      className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                      title="Eliminar de la tienda"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               );
             })}
