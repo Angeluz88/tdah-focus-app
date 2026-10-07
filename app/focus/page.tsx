@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Play, Pause, RotateCcw, Trophy, CheckCircle2, Clock, ArrowLeft, Loader2, PlusCircle, Trash2, Repeat } from 'lucide-react';
+import { Play, Pause, RotateCcw, Trophy, CheckCircle2, Clock, ArrowLeft, Loader2, PlusCircle, Trash2, Repeat, Lock } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -31,7 +31,6 @@ function FocusTimerContent() {
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Cargar tarea desde Supabase
   useEffect(() => {
     if (!taskId) return;
 
@@ -59,7 +58,6 @@ function FocusTimerContent() {
     fetchTask();
   }, [taskId, supabase]);
 
-  // 2. Control del temporizador
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
       timerRef.current = setInterval(() => {
@@ -75,13 +73,11 @@ function FocusTimerContent() {
     };
   }, [isRunning, timeLeft]);
 
-  // 3. Extender tiempo
   const handleExtend = (minutes: number) => {
     setTimeLeft((prev) => prev + minutes * 60);
     if (!isRunning) setIsRunning(true);
   };
 
-  // 4. Concluir tarea y sumar puntos
   const handleFinishTask = async () => {
     if (!task) {
       setIsCompleted(true);
@@ -107,13 +103,12 @@ function FocusTimerContent() {
       router.refresh();
     } catch (err: any) {
       console.error('Error al completar la tarea:', err.message || err);
-      alert('Error al acreditar puntos: ' + (err.message || 'Verifica RLS'));
+      alert('Error al acreditar puntos: ' + (err.message || 'Verifica la base de datos'));
     } finally {
       setCompleting(false);
     }
   };
 
-  // 5. Eliminar tarea definitivamente tras concluir
   const handleDeleteCurrentTask = async () => {
     if (!task) return;
     try {
@@ -148,6 +143,8 @@ function FocusTimerContent() {
     );
   }
 
+  const canFinish = timeLeft === 0;
+
   return (
     <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-6 text-center">
       <div className="flex items-center justify-between">
@@ -160,7 +157,6 @@ function FocusTimerContent() {
         </button>
       </div>
 
-      {/* Tarjeta de Tarea */}
       {task ? (
         <div className="bg-slate-900 border border-indigo-500/30 rounded-2xl p-6 space-y-2 shadow-xl relative">
           {task.is_periodic && (
@@ -190,14 +186,12 @@ function FocusTimerContent() {
         </div>
       )}
 
-      {/* Temporizador */}
       <div className="py-6">
         <div className="text-6xl sm:text-8xl font-mono font-bold text-slate-100 tracking-tight">
           {formatTime(timeLeft)}
         </div>
       </div>
 
-      {/* Botones para Extender Tiempo */}
       {!isCompleted && (
         <div className="flex items-center justify-center gap-2">
           <button
@@ -217,7 +211,6 @@ function FocusTimerContent() {
         </div>
       )}
 
-      {/* Pantalla de Finalización */}
       {isCompleted ? (
         <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 space-y-4 animate-in fade-in">
           <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
@@ -225,11 +218,11 @@ function FocusTimerContent() {
           <p className="text-xs text-slate-300">
             {task
               ? task.is_periodic
-                ? `Puntos (+${task.points} pts) acreditados. Tu tarea periódica sigue disponible para el próximo ciclo.`
+                ? `Puntos (+${task.points} pts) acreditados. La tarea periódica continúa en tu lista.`
                 : `Puntos (+${task.points} pts) acreditados.`
               : 'Has completado una sesión de enfoque libre.'}
           </p>
-          
+
           <div className="flex justify-center items-center gap-3 pt-2">
             <button
               onClick={() => router.push('/dashboard/tasks')}
@@ -250,7 +243,6 @@ function FocusTimerContent() {
           </div>
         </div>
       ) : (
-        /* Controles Principales + Botón de Concluir Directo */
         <div className="space-y-4">
           <div className="flex items-center justify-center gap-4">
             <button
@@ -285,20 +277,29 @@ function FocusTimerContent() {
             </button>
           </div>
 
-          {/* Botón para marcar concluida manualmente si terminó antes de tiempo */}
           {task && (
             <div>
               <button
                 onClick={handleFinishTask}
-                disabled={completing}
-                className="inline-flex items-center gap-2 text-xs font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-4 py-2 rounded-xl border border-emerald-500/20 transition disabled:opacity-50"
+                disabled={!canFinish || completing}
+                className={`inline-flex items-center gap-2 text-xs font-medium px-4 py-2 rounded-xl border transition ${
+                  canFinish
+                    ? 'text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 cursor-pointer'
+                    : 'text-slate-500 bg-slate-900/50 border-slate-800 cursor-not-allowed opacity-60'
+                }`}
               >
                 {completing ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : canFinish ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                 ) : (
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <Lock className="w-3.5 h-3.5 text-slate-500" />
                 )}
-                <span>Marcar como Concluida y Cobrar Puntos</span>
+                <span>
+                  {canFinish
+                    ? 'Reclamar Puntos y Concluir Tarea'
+                    : 'Completa el tiempo para poder reclamar puntos'}
+                </span>
               </button>
             </div>
           )}
